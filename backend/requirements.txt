@@ -1,8 +1,9 @@
-Flask
-Flask-CORS
-Flask-SQLAlchemy
-pandas
-openpyxl
-numpy
-logging
-sentry-sdk
+flask==2.3.2
+flask-cors==4.0.0
+flask-sqlalchemy==3.0.3
+pandas==2.0.3
+openpyxl==3.1.2
+numpy==1.26.0
+sqlalchemy==2.0.23
+logging==0.4.9.6
+typing-extensions==4.9.0
