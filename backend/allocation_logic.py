@@ -9,13 +9,13 @@ logger = logging.getLogger(__name__)
 class StockBatch:
     def __init__(self, row: pd.Series):
         self.batch_number = row['Batch Number']
-        self.weight = float(row['Stock Weight'].split()[0])  # Extract KG
+        self.weight = float(row['Stock Weight'].split()[0])  # Extract KG (e.g., "361.056 KG" → 361.056)
         self.material_id = row['Material ID']
         self.age = row['Real Stock Age']
         self.variety = row['Variety']
         self.ggn = row['GGN']
         self.origin = row['Origin Country']
-        self.quality = row['Reinspection Quality']
+        self.quality = row['Q3: Reinspection Quality']  # Updated column name
         self.supplier = row['Supplier']
 
     def matches_restrictions(self, restrictions: Dict) -> bool:
@@ -37,12 +37,12 @@ def allocate_fruits(stock_df: pd.DataFrame, orders: List[Dict], restrictions: Di
     Allocate stock to orders using FIFO, respecting restrictions.
 
     Args:
-        stock_df (pd.DataFrame): Stock data from Excel.
-        orders (List[Dict]): List of customer orders (e.g., {"customer_id": "C1", "fruit": "FIARGRN", "quantity": 100}).
+        stock_df (pd.DataFrame): Stock data from Excel or document.
+        orders (List[Dict]): List of customer orders (e.g., {"customer_id": "C1", "fruit": "FIARGRN", "quantity": 200}).
         restrictions (Dict): Customer restrictions (quality, origin, variety, GGN, supplier).
 
     Returns:
-        Dict: Allocation results per order (e.g., {"C1": {"batch": "EX24000367", "weight": 100}}).
+        Dict: Allocation results per order (e.g., {"C1": {"status": "fully_allocated", "weight": 200, "batches": [...]}}).
     """
     # Convert stock to list of StockBatch objects, sorted by age (FIFO: oldest first)
     stock_batches = [StockBatch(row) for _, row in stock_df.sort_values('Real Stock Age', ascending=False).iterrows()]
@@ -87,10 +87,22 @@ def allocate_fruits(stock_df: pd.DataFrame, orders: List[Dict], restrictions: Di
     return allocations
 
 if __name__ == "__main__":
-    # Example usage with sample data
-    stock_df = pd.read_excel("stock.xlsx")
+    # Convert document data to DataFrame for testing
+    stock_data = [
+        {"Location": "", "Batch Number": "EX24000367", "Stock Weight": "0.008 KG", "Material ID": "FIARGRN", 
+         "Real Stock Age": 23, "Variety": "BLUE RIBBON", "GGN": "4063061591012", "Origin Country": "Chile", 
+         "Q3: Reinspection Quality": "", "BL/AWB/CMR": "27012025", "Allocation": "", "MinimumSize": 12, 
+         "Origin Pallet Number": "FP00054676", "Supplier": "BERRY PACKING SERVICES BV"},
+        # Add more rows from your document here (simplified for brevity)
+        {"Location": "", "Batch Number": "EX24000536", "Stock Weight": "361.056 KG", "Material ID": "FIARGRN", 
+         "Real Stock Age": 14, "Variety": "LEGACY", "GGN": "4059883818772", "Origin Country": "Chile", 
+         "Q3: Reinspection Quality": "", "BL/AWB/CMR": "5022025", "Allocation": "", "MinimumSize": 12, 
+         "Origin Pallet Number": "FP00058910", "Supplier": "BERRY PACKING SERVICES BV"},
+        # Continue for all 151 rows...
+    ]
+    stock_df = pd.DataFrame(stock_data)
     orders = [
-        {"customer_id": "C1", "fruit": "FIARGRN", "quantity": 200},
+        {"customer_id": "C1", "fruit": "FIARGRN", "quantity": 200},  # Example order
         {"customer_id": "C2", "fruit": "FIARORG", "quantity": 300}
     ]
     restrictions = {
