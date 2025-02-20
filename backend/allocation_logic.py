@@ -1,58 +1,104 @@
+import pandas as pd
+from typing import Dict, List, Optional
 import logging
-from typing import Dict, List
-import json
+from datetime import datetime
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def allocate_fruits(stock: Dict[str, int], destinations: List[str], restrictions: Dict) -> Dict:
+class StockBatch:
+    def __init__(self, row: pd.Series):
+        self.batch_number = row['Batch Number']
+        self.weight = float(row['Stock Weight'].split()[0])  # Extract KG
+        self.material_id = row['Material ID']
+        self.age = row['Real Stock Age']
+        self.variety = row['Variety']
+        self.ggn = row['GGN']
+        self.origin = row['Origin Country']
+        self.quality = row['Reinspection Quality']
+        self.supplier = row['Supplier']
+
+    def matches_restrictions(self, restrictions: Dict) -> bool:
+        """Check if this batch meets customer restrictions."""
+        if restrictions.get('quality') and self.quality not in restrictions['quality']:
+            return False
+        if restrictions.get('origin') and self.origin not in restrictions['origin']:
+            return False
+        if restrictions.get('variety') and self.variety not in restrictions['variety']:
+            return False
+        if restrictions.get('ggn') and self.ggn != restrictions['ggn']:
+            return False
+        if restrictions.get('supplier') and self.supplier not in restrictions['supplier']:
+            return False
+        return True
+
+def allocate_fruits(stock_df: pd.DataFrame, orders: List[Dict], restrictions: Dict) -> Dict:
     """
-    Allocate fruit stock across destinations while respecting restrictions.
+    Allocate stock to orders using FIFO, respecting restrictions.
 
     Args:
-        stock (Dict[str, int]): Dictionary of fruit types and quantities (e.g., {"apples": 100, "bananas": 50}).
-        destinations (List[str]): List of destination names (e.g., ["Store1", "Store2"]).
-        restrictions (Dict): Restrictions from restrictions.py (e.g., max/min stock per destination).
+        stock_df (pd.DataFrame): Stock data from Excel.
+        orders (List[Dict]): List of customer orders (e.g., {"customer_id": "C1", "fruit": "FIARGRN", "quantity": 100}).
+        restrictions (Dict): Customer restrictions (quality, origin, variety, GGN, supplier).
 
     Returns:
-        Dict[str, Dict[str, int]]: Allocation per destination (e.g., {"Store1": {"apples": 50}}).
-
-    Raises:
-        ValueError: If stock or destinations are invalid.
+        Dict: Allocation results per order (e.g., {"C1": {"batch": "EX24000367", "weight": 100}}).
     """
-    if not stock or not all(isinstance(v, (int, float)) and v >= 0 for v in stock.values()):
-        raise ValueError("Stock must be a non-empty dict with non-negative values.")
-    if not destinations or not all(isinstance(d, str) for d in destinations):
-        raise ValueError("Destinations must be a non-empty list of strings.")
+    # Convert stock to list of StockBatch objects, sorted by age (FIFO: oldest first)
+    stock_batches = [StockBatch(row) for _, row in stock_df.sort_values('Real Stock Age', ascending=False).iterrows()]
+    allocations = {}
+    remaining_stock = stock_batches.copy()
 
-    allocation = {dest: {} for dest in destinations}
-    total_destinations = len(destinations)
+    for order in orders:
+        customer_id = order['customer_id']
+        fruit_type = order['fruit']
+        required_weight = order['quantity']
+        allocated_weight = 0
+        allocated_batches = []
 
-    for fruit, qty in stock.items():
-        # Distribute evenly, respecting restrictions
-        base_qty = qty // total_destinations
-        remainder = qty % total_destinations
+        # Filter batches by material_id (fruit type)
+        matching_batches = [b for b in remaining_stock if b.material_id == fruit_type]
+        if not matching_batches:
+            allocations[customer_id] = {"status": "unfulfilled", "weight": 0}
+            continue
 
-        for i, dest in enumerate(destinations):
-            alloc_qty = base_qty + (1 if i < remainder else 0)
-            # Apply restrictions (simplified—expand based on restrictions.py)
-            max_limit = restrictions.get(dest, {}).get(fruit, {}).get("max", float('inf'))
-            if alloc_qty > max_limit:
-                alloc_qty = max_limit
-                logger.warning(f"Reduced {fruit} for {dest} to {alloc_qty} due to max limit {max_limit}")
-            allocation[dest][fruit] = allocation[dest].get(fruit, 0) + alloc_qty
+        for batch in matching_batches:
+            if not batch.matches_restrictions(restrictions):
+                continue
+            if allocated_weight >= required_weight:
+                break
+            weight_to_allocate = min(required_weight - allocated_weight, batch.weight)
+            allocated_weight += weight_to_allocate
+            batch.weight -= weight_to_allocate
+            allocated_batches.append({"batch": batch.batch_number, "weight": weight_to_allocate})
 
-    logger.info(f"Allocated stock: {json.dumps(allocation, indent=2)}")
-    return allocation
+        if allocated_weight > 0:
+            allocations[customer_id] = {
+                "status": "fully_allocated" if allocated_weight == required_weight else "partially_allocated",
+                "weight": allocated_weight,
+                "batches": allocated_batches
+            }
+            # Remove or update batches with zero weight
+            remaining_stock = [b for b in remaining_stock if b.weight > 0]
+        else:
+            allocations[customer_id] = {"status": "unfulfilled", "weight": 0}
+
+    logger.info(f"Allocation completed: {json.dumps(allocations, indent=2)}")
+    return allocations
 
 if __name__ == "__main__":
-    # Example usage
-    sample_stock = {"apples": 100, "bananas": 50}
-    sample_destinations = ["Store1", "Store2"]
-    sample_restrictions = {
-        "Store1": {"apples": {"max": 60}, "bananas": {"max": 30}},
-        "Store2": {"apples": {"max": 40}, "bananas": {"max": 20}}
+    # Example usage with sample data
+    stock_df = pd.read_excel("stock.xlsx")
+    orders = [
+        {"customer_id": "C1", "fruit": "FIARGRN", "quantity": 200},
+        {"customer_id": "C2", "fruit": "FIARORG", "quantity": 300}
+    ]
+    restrictions = {
+        "quality": ["Good Q/S", "Fair M/C"],
+        "origin": ["Chile"],
+        "variety": ["LEGACY"],
+        "ggn": "4063061591012",
+        "supplier": ["HORTIFRUT CHILE S.A."]
     }
-    result = allocate_fruits(sample_stock, sample_destinations, sample_restrictions)
+    result = allocate_fruits(stock_df, orders, restrictions)
     print(result)
