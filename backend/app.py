@@ -10,6 +10,13 @@ import openpyxl
 from datetime import datetime
 
 app = Flask(__name__)
+import os
+
+# Use Render's persistent disk if available, else local
+if 'RENDER' in os.environ:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////opt/render/project/src/restrictions.db'
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///restrictions.db'
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///restrictions.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
