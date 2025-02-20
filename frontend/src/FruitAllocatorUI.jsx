@@ -1,126 +1,93 @@
-import React, { useReducer, useState } from "react";
-import { Alert, Spinner } from "react-bootstrap";
+import React, { useState } from 'react';
+import { useDropzone } from 'react-dropzone';
+import './FruitAllocatorUI.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+function FruitAllocatorUI({ onAllocate, allocation }) {
+  const [stockFile, setStockFile] = useState(null);
+  const [ordersFile, setOrdersFile] = useState(null);
+  const [restrictions, setRestrictions] = useState({
+    quality: ['Good Q/S', 'Fair M/C'],
+    origin: ['Chile'],
+    variety: ['LEGACY'],
+    ggn: '4063061591012',
+    supplier: ['HORTIFRUT CHILE S.A.']
+  });
 
-// Reducer function to manage customers state
-const customerReducer = (state, action) => {
-  switch (action.type) {
-    case "SET_CUSTOMERS":
-      return action.payload;
-    case "UPDATE_RESTRICTIONS":
-      return state.map((customer) =>
-        customer.id === action.customerId
-          ? {
-              ...customer,
-              order_types: {
-                ...customer.order_types,
-                [action.orderType]: {
-                  ...customer.order_types[action.orderType],
-                  restrictions: action.restrictions,
-                },
-              },
-            }
-          : customer
-      );
-    default:
-      return state;
-  }
-};
-
-const FruitAllocatorUI = () => {
-  const [customers, dispatch] = useReducer(customerReducer, []);
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Enhanced fetch function with retry logic
-  const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch(url, { ...options, signal: controller.signal });
-
-        clearTimeout(timeoutId);
-        if (!response.ok) throw new Error("Server error. Please try again.");
-
-        return await response.json();
-      } catch (err) {
-        if (i === retries - 1) throw err;
-        await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)));
-      }
-    }
+  const onDropStock = (acceptedFiles) => {
+    setStockFile(acceptedFiles[0]);
   };
 
-  // File Upload Handler
-  const handleFileUpload = async (file, endpoint) => {
-    setError(null); // Clear previous errors
-    setIsLoading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const data = await fetchWithRetry(`${API_BASE_URL}/${endpoint}`, {
-        method: "POST",
-        body: formData,
-      });
-
-      console.log("Upload successful:", data);
-    } catch (err) {
-      setError("Upload failed. " + err.message);
-    } finally {
-      setIsLoading(false);
-    }
+  const onDropOrders = (acceptedFiles) => {
+    setOrdersFile(acceptedFiles[0]);
   };
 
-  // Get order number (prioritize "Order", fallback to "Sales Document")
-  const getOrderNumber = (order) => {
-    return order["Order"] || order["Sales Document"] || "N/A";
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!stockFile || !ordersFile) {
+      alert("Please upload both stock and orders files.");
+      return;
+    }
+    const formData = new FormData();
+    formData.append('stock_file', stockFile);
+    formData.append('orders_file', ordersFile);
+
+    const response = await fetch('http://localhost:5000/allocate_stock', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await response.json();
+    onAllocate(data.allocation);
+  };
+
+  const updateRestriction = (field, value) => {
+    setRestrictions(prev => ({ ...prev, [field]: value }));
+    // Send to backend via /set_restrictions (simplified)
+    fetch('http://localhost:5000/set_restrictions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_id: 'default', restrictions: { ...restrictions, [field]: value } }),
+    });
   };
 
   return (
-    <div className="container">
-      <h2>Fruit Stock Allocation</h2>
-
-      {/* Error Message */}
-      {error && <Alert variant="danger">{error}</Alert>}
-
-      {/* File Upload Buttons */}
-      <input
-        type="file"
-        onChange={(e) => handleFileUpload(e.target.files[0], "upload_orders")}
-      />
-      <input
-        type="file"
-        onChange={(e) => handleFileUpload(e.target.files[0], "upload_stock")}
-      />
-
-      {/* Loading Indicator */}
-      {isLoading && <Spinner animation="border" />}
-
-      {/* Display Customers */}
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Customer</th>
-            <th>Order</th>
-            <th>Restrictions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers.map((customer) => (
-            <tr key={customer.id}>
-              <td>{customer.id}</td>
-              <td>{getOrderNumber(customer)}</td>
-              <td>{JSON.stringify(customer.order_types)}</td>
-            </tr>
+    <div className="fruit-allocator" aria-label="Fruit Stock Allocator">
+      <form onSubmit={handleSubmit}>
+        <h2>Fruit Stock Allocation</h2>
+        <div>
+          <h3>Upload Files</h3>
+          <div {...useDropzone({ onDrop: onDropStock })}>
+            {stockFile ? stockFile.name : 'Drag and drop stock Excel file or click to select'}
+          </div>
+          <div {...useDropzone({ onDrop: onDropOrders })}>
+            {ordersFile ? ordersFile.name : 'Drag and drop orders Excel file or click to select'}
+          </div>
+        </div>
+        <h3>Restrictions</h3>
+        <div>
+          <label>Quality:</label>
+          <select value={restrictions.quality.join(',')} onChange={(e) => updateRestriction('quality', e.target.value.split(','))}>
+            <option value="Good Q/S,Fair M/C">Good Q/S, Fair M/C</option>
+            <option value="Poor M/C">Poor M/C</option>
+          </select>
+          {/* Similar selects for origin, variety, GGN, supplier */}
+        </div>
+        <button type="submit">Allocate</button>
+      </form>
+      {allocation && (
+        <div className="allocation-result" aria-live="polite">
+          <h3>Allocation Results:</h3>
+          {Object.entries(allocation).map(([customer, data]) => (
+            <div key={customer}>
+              {customer}: {data.status === 'fully_allocated' && '✅'} 
+              {data.status === 'partially_allocated' && '⚠️'} 
+              {data.status === 'unfulfilled' && '❌'} 
+              Weight: {data.weight} KG, Batches: {JSON.stringify(data.batches)}
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      )}
     </div>
   );
-};
+}
 
 export default FruitAllocatorUI;
