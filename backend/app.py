@@ -7,6 +7,7 @@ import logging
 from allocation_logic import allocate_fruits
 from restrictions import get_restrictions
 import openpyxl
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -46,7 +47,9 @@ def upload_stock():
         try:
             filename = f"temp_stock_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
             file.save(filename)
-            df = pd.read_excel(filename)
+            df = pd.read_excel(filename, engine='openpyxl')
+            # Ensure column names match document
+            df.columns = [col.strip() for col in df.columns]  # Clean column names
             logger.info(f"Stock uploaded: {len(df)} rows")
             os.remove(filename)  # Clean up temporary file
             return jsonify({"status": "success", "rows": len(df)}), 200
@@ -67,8 +70,12 @@ def upload_orders():
         try:
             filename = f"temp_orders_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
             file.save(filename)
-            df = pd.read_excel(filename)
-            orders = df.to_dict('records')  # Convert to list of dicts
+            df = pd.read_excel(filename, engine='openpyxl')
+            orders = [{
+                "customer_id": row.get('CustomerID', 'default'),
+                "fruit": row.get('Material ID', ''),
+                "quantity": float(row.get('Quantity', 0))
+            } for _, row in df.iterrows()]
             logger.info(f"Orders uploaded: {len(orders)} orders")
             os.remove(filename)
             return jsonify({"status": "success", "orders": len(orders)}), 200
@@ -85,10 +92,16 @@ def allocate_stock():
         if not data or "stock_file" not in data or "orders" not in data:
             return jsonify({"error": "Missing stock or orders"}), 400
 
-        stock_df = pd.read_excel(data["stock_file"])  # Assume file path or temp storage
+        # Assume stock_file is a path or DataFrame; for simplicity, use uploaded data
+        stock_df = pd.read_excel(data["stock_file"]) if isinstance(data["stock_file"], str) else data["stock_file"]
         orders = data["orders"]
         customer_id = data.get("customer_id", "default")
         restrictions = get_restrictions(customer_id)
+
+        # Ensure column names match stock data
+        stock_df.columns = [col.strip() for col in stock_df.columns]
+        stock_df['Stock Weight'] = stock_df['Stock Weight'].apply(lambda x: float(str(x).split()[0]) if isinstance(x, str) else float(x))
+        stock_df['Real Stock Age'] = stock_df['Real Stock Age'].astype(int)
 
         allocation = allocate_fruits(stock_df, orders, restrictions)
         logger.info(f"Stock allocated: {json.dumps(allocation, indent=2)}")
