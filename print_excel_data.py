@@ -1,27 +1,37 @@
 import pandas as pd
-import os
+import logging
+from typing import Dict, List
 
-EXCEL_DIR = r"C:\Users\adria\CascadeProjects\windsurf-project\backend\xlsx"
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-def print_excel_contents(filename):
-    filepath = os.path.join(EXCEL_DIR, filename)
-    print(f"\n=== Contents of {filename} ===")
-    df = pd.read_excel(filepath, engine='openpyxl')
-    print("\nColumns:")
-    print(df.columns.tolist())
-    print("\nFirst 5 rows:")
-    print(df.head().to_string())
-    print("\nData Info:")
-    print(df.info())
-    print("\nValue counts for numeric columns:")
-    numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
-    for col in numeric_cols:
-        print(f"\n{col} - Unique values:")
-        print(df[col].value_counts().head())
+def read_stock_excel(file_path: str) -> pd.DataFrame:
+    """Read stock data from Excel file."""
+    try:
+        df = pd.read_excel(file_path)
+        logger.info(f"Read stock data: {len(df)} rows")
+        return df
+    except Exception as e:
+        logger.error(f"Error reading stock Excel: {str(e)}")
+        raise
 
-try:
-    print_excel_contents("StockAllocation.xlsx")
-    print("\n" + "="*50 + "\n")
-    print_excel_contents("OrdersAllocation.xlsx")
-except Exception as e:
-    print(f"Error reading files: {str(e)}")
+def read_orders_excel(file_path: str) -> List[Dict]:
+    """Read customer orders from Excel file."""
+    try:
+        df = pd.read_excel(file_path)
+        orders = df.to_dict('records')
+        logger.info(f"Read orders data: {len(orders)} orders")
+        return [{
+            "customer_id": row.get('CustomerID', 'default'),
+            "fruit": row.get('Material ID', ''),
+            "quantity": float(row.get('Quantity', 0))
+        } for row in orders]
+    except Exception as e:
+        logger.error(f"Error reading orders Excel: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    stock_df = read_stock_excel("stock.xlsx")
+    orders = read_orders_excel("orders.xlsx")
+    print(stock_df.head())
+    print(orders)
