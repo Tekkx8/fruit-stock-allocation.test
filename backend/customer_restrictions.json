@@ -1,0 +1,16 @@
+{
+  "customers": [
+    {
+      "id": "10054809 (SOFRUCE)",
+      "restrictions": {
+        "BL/AWB/CMR": [],
+        "GGN": [],
+        "MinimumSize": [],
+        "Origin": [],
+        "Quality": [],
+        "Supplier": [],
+        "Variety": []
+      }
+    }
+  ]
+}

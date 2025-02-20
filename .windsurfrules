@@ -1,0 +1,2 @@
+Before implementing any change in the code, think about 3 steps ahead, and how the change will affect other scripts.
+When servers are running on your side. Check for errors in console after each code implementation.
