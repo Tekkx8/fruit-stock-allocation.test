@@ -1,72 +1,60 @@
-import json
+from flask_sqlalchemy import SQLAlchemy
 from typing import Dict, Optional
-from functools import lru_cache
 import logging
+
+db = SQLAlchemy()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-@lru_cache(maxsize=1)
-def load_restrictions(file_path: str = "customer_restrictions.json") -> Dict:
+class Restriction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.String(50), unique=True, nullable=False)
+    quality = db.Column(db.String(100))
+    origin = db.Column(db.String(50))
+    variety = db.Column(db.String(50))
+    ggn = db.Column(db.String(50))
+    supplier = db.Column(db.String(100))
+
+    def to_dict(self) -> Dict:
+        return {
+            "quality": self.quality.split(',') if self.quality else [],
+            "origin": self.origin.split(',') if self.origin else [],
+            "variety": self.variety.split(',') if self.variety else [],
+            "ggn": self.ggn,
+            "supplier": self.supplier.split(',') if self.supplier else []
+        }
+
+def get_restrictions(customer_id: str = "default") -> Dict:
     """
-    Load and cache restrictions from a JSON file.
+    Retrieve restrictions for a customer from SQLite.
 
     Args:
-        file_path (str): Path to the JSON file containing restrictions.
+        customer_id (str): Customer identifier.
 
     Returns:
-        Dict: Parsed restrictions (e.g., {"Store1": {"apples": {"max": 50}}})
-
-    Raises:
-        FileNotFoundError: If the file doesn't exist.
-        json.JSONDecodeError: If the JSON is invalid.
+        Dict: Restrictions (quality, origin, variety, GGN, supplier).
     """
-    try:
-        with open(file_path, 'r') as f:
-            restrictions = json.load(f)
-        logger.info(f"Loaded restrictions from {file_path}")
-        return restrictions
-    except FileNotFoundError:
-        logger.error(f"Restrictions file not found: {file_path}")
-        return {}
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON in {file_path}: {str(e)}")
-        return {}
+    restriction = Restriction.query.filter_by(customer_id=customer_id).first()
+    if not restriction:
+        logger.warning(f"No restrictions found for customer {customer_id}")
+        return {
+            "quality": ["Good Q/S", "Fair M/C"],
+            "origin": ["Chile"],
+            "variety": ["LEGACY"],
+            "ggn": "4063061591012",
+            "supplier": ["HORTIFRUT CHILE S.A."]
+        }
+    return restriction.to_dict()
 
-class Restriction:
-    def __init__(self, data: Dict):
-        """
-        Initialize restriction object with data from JSON.
-
-        Args:
-            data (Dict): Restriction data (e.g., {"max_stock": 100, "fruit_limits": {...}}).
-        """
-        self.max_stock = data.get("max_stock", float('inf'))
-        self.min_stock = data.get("min_stock", 0)
-        self.fruit_limits = data.get("fruit_limits", {})
-
-    def validate_allocation(self, allocation: Dict[str, int]) -> bool:
-        """
-        Validate if an allocation meets the restrictions.
-
-        Args:
-            allocation (Dict[str, int]): Allocation data (e.g., {"apples": 50}).
-
-        Returns:
-            bool: True if valid, False otherwise.
-        """
-        total = sum(allocation.values())
-        if not (self.min_stock <= total <= self.max_stock):
-            return False
-
-        for fruit, qty in allocation.items():
-            max_limit = self.fruit_limits.get(fruit, float('inf'))
-            if qty > max_limit:
-                return False
-        return True
-
-if __name__ == "__main__":
-    restrictions = load_restrictions()
-    sample_alloc = {"apples": 50, "bananas": 20}
-    restr = Restriction(restrictions.get("Store1", {}))
-    print(f"Allocation valid? {restr.validate_allocation(sample_alloc)}")
+def set_restrictions(customer_id: str, restrictions: Dict):
+    """
+    Store or update restrictions for a customer in SQLite.
+    """
+    restriction = Restriction.query.filter_by(customer_id=customer_id).first()
+    if not restriction:
+        restriction = Restriction(customer_id=customer_id)
+    
+    restriction.quality = ','.join(restrictions.get('quality', []))
+    restriction.origin = ','.join(restrictions.get('origin', []))
+    restriction.variety 
