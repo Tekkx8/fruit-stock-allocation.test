@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { useRestrictions } from './hooks/useRestrictions';
 import { useAllocation } from './hooks/useAllocation';
 import { useFileUpload } from './hooks/useFileUpload';
@@ -137,39 +138,61 @@ function AllocationResults({ allocation, onClose }) {
 function FruitAllocatorUI() {
   const {
     restrictions,
-    isLoading: isLoadingRestrictions,
+    isLoading: restrictionsLoading,
     error: restrictionsError,
     updateRestrictions,
   } = useRestrictions();
 
   const {
-    allocate,
-    isAllocating,
     allocation,
+    isLoading: allocationLoading,
     error: allocationError,
-    reset: resetAllocation,
+    allocateStock,
   } = useAllocation();
 
-  const stockUpload = useFileUpload();
-  const ordersUpload = useFileUpload();
+  const {
+    stockFile,
+    ordersFile,
+    handleStockUpload,
+    handleOrdersUpload,
+    clearStockFile,
+    clearOrdersFile,
+  } = useFileUpload();
+
+  const onDropStock = useCallback((acceptedFiles) => {
+    handleStockUpload(acceptedFiles[0]);
+  }, [handleStockUpload]);
+
+  const onDropOrders = useCallback((acceptedFiles) => {
+    handleOrdersUpload(acceptedFiles[0]);
+  }, [handleOrdersUpload]);
+
+  const {
+    getRootProps: getStockRootProps,
+    getInputProps: getStockInputProps,
+    isDragActive: isStockDragActive,
+  } = useDropzone({ onDrop: onDropStock, accept: '.xlsx,.xls' });
+
+  const {
+    getRootProps: getOrdersRootProps,
+    getInputProps: getOrdersInputProps,
+    isDragActive: isOrdersDragActive,
+  } = useDropzone({ onDrop: onDropOrders, accept: '.xlsx,.xls' });
 
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
-      if (!stockUpload.file || !ordersUpload.file) {
+      if (!stockFile || !ordersFile) {
         return;
       }
 
       try {
-        await allocate({
-          stockFile: stockUpload.file,
-          ordersFile: ordersUpload.file,
-        });
+        await allocateStock(stockFile, ordersFile);
       } catch (error) {
         console.error('Allocation failed:', error);
       }
     },
-    [stockUpload.file, ordersUpload.file, allocate]
+    [stockFile, ordersFile, allocateStock]
   );
 
   const handleRestrictionChange = useCallback(
@@ -183,7 +206,7 @@ function FruitAllocatorUI() {
     [restrictions, updateRestrictions]
   );
 
-  if (isLoadingRestrictions) {
+  if (restrictionsLoading) {
     return <div className="loading">Loading...</div>;
   }
 
@@ -196,34 +219,31 @@ function FruitAllocatorUI() {
   }
 
   return (
-    <div className="fruit-allocator" role="main">
+    <div className="fruit-allocator-ui">
+      <h1 className="text-2xl font-bold mb-4">Fruit Stock Allocation</h1>
       <form onSubmit={handleSubmit}>
-        <h2>Fruit Stock Allocation</h2>
-
-        <div className="upload-section">
-          <h3>Upload Files</h3>
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <FileUpload
             label="Stock"
-            file={stockUpload.file}
-            error={stockUpload.error}
-            getRootProps={stockUpload.getRootProps}
-            getInputProps={stockUpload.getInputProps}
-            isDragActive={stockUpload.isDragActive}
-            onClear={stockUpload.clear}
+            file={stockFile}
+            error={allocationError}
+            getRootProps={getStockRootProps}
+            getInputProps={getStockInputProps}
+            isDragActive={isStockDragActive}
+            onClear={clearStockFile}
           />
           <FileUpload
             label="Orders"
-            file={ordersUpload.file}
-            error={ordersUpload.error}
-            getRootProps={ordersUpload.getRootProps}
-            getInputProps={ordersUpload.getInputProps}
-            isDragActive={ordersUpload.isDragActive}
-            onClear={ordersUpload.clear}
+            file={ordersFile}
+            error={allocationError}
+            getRootProps={getOrdersRootProps}
+            getInputProps={getOrdersInputProps}
+            isDragActive={isOrdersDragActive}
+            onClear={clearOrdersFile}
           />
         </div>
-
-        <div className="restrictions-section">
-          <h3>Restrictions</h3>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold">Restrictions</h2>
           <RestrictionSelect
             label="Quality"
             value={restrictions?.quality || []}
@@ -232,7 +252,7 @@ function FruitAllocatorUI() {
               { value: 'Poor M/C', label: 'Poor M/C' },
             ]}
             onChange={(value) => handleRestrictionChange('quality', value)}
-            isDisabled={isAllocating}
+            isDisabled={allocationLoading}
           />
           <RestrictionSelect
             label="Origin"
@@ -242,7 +262,7 @@ function FruitAllocatorUI() {
               { value: 'Peru', label: 'Peru' },
             ]}
             onChange={(value) => handleRestrictionChange('origin', value)}
-            isDisabled={isAllocating}
+            isDisabled={allocationLoading}
           />
           <RestrictionSelect
             label="Variety"
@@ -252,32 +272,29 @@ function FruitAllocatorUI() {
               { value: 'BLUE RIBBON', label: 'Blue Ribbon' },
             ]}
             onChange={(value) => handleRestrictionChange('variety', value)}
-            isDisabled={isAllocating}
+            isDisabled={allocationLoading}
           />
         </div>
-
         {allocationError && (
           <div className="error-message" role="alert">
             {allocationError.message}
           </div>
         )}
-
         <button
           type="submit"
-          disabled={!stockUpload.file || !ordersUpload.file || isAllocating}
+          disabled={!stockFile || !ordersFile || allocationLoading}
           className="submit-button"
         >
-          {isAllocating ? 'Allocating...' : 'Allocate'}
+          {allocationLoading ? 'Allocating...' : 'Allocate'}
         </button>
       </form>
-
       {allocation && (
         <AllocationResults
           allocation={allocation}
           onClose={() => {
-            resetAllocation();
-            stockUpload.clear();
-            ordersUpload.clear();
+            allocation = null;
+            clearStockFile();
+            clearOrdersFile();
           }}
         />
       )}

@@ -1,5 +1,9 @@
 from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
+from flask_cors import CORS  # Import CORS
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)  # Enable CORS for all routes, allow credentials
+
 import pandas as pd
 import os
 import logging
@@ -13,6 +17,7 @@ from werkzeug.utils import secure_filename
 import hashlib
 from pathlib import Path
 from database import db
+
 
 # Environment configuration
 IS_DEVELOPMENT = os.getenv('FLASK_ENV', 'development') == 'development'

@@ -2,20 +2,34 @@
   "name": "fruit-stock-allocation-frontend",
   "version": "1.0.0",
   "dependencies": {
+    "@shadcn/ui": "^0.0.4",
     "axios": "1.6.2",
-    "bootstrap": "5.3.0",
+    "bootstrap": "^5.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.475.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-dropzone": "14.2.3",
     "react-query": "3.39.3",
-    "react-toastify": "^11.0.3"
+    "react-toastify": "^11.0.3",
+    "tailwind-merge": "^3.0.1"
   },
   "devDependencies": {
-    "eslint": "^9.20.1",
+    "@babel/core": "^7.26.9",
+    "@babel/eslint-parser": "^7.26.8",
+    "@babel/preset-react": "^7.26.3",
+    "autoprefixer": "^10.4.17",
+    "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.0.1",
+    "eslint-config-react-app": "^7.0.1",
     "eslint-plugin-prettier": "^5.2.3",
+    "postcss": "^8.4.35",
+    "postcss-flexbugs-fixes": "^5.0.2",
+    "postcss-preset-env": "^10.1.4",
     "prettier": "^3.5.1",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "tailwindcss": "^3.4.1"
   },
   "eslintConfig": {
     "extends": [
@@ -24,7 +38,7 @@
     ]
   },
   "scripts": {
-    "start": "set PORT=3001 && react-scripts start",
+    "start": "set PORT=3005 && react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test"
   },

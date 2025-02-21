@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './index.css';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import App from './App';
-import './index.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient();
 

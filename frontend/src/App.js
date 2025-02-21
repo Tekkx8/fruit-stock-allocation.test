@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { ReactQueryDevtools } from 'react-query/devtools';
 import { ToastContainer } from 'react-toastify';
@@ -60,28 +60,34 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
+  const [darkMode, setDarkMode] = useState(false);
+
+  const toggleTheme = () => {
+    setDarkMode(!darkMode);
+    document.documentElement.classList.toggle('dark', !darkMode);
+  };
+
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <div className="App">
-          <h1>Fruit Stock Allocation</h1>
-          <FruitAllocatorUI />
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
-        </div>
-        <ReactQueryDevtools initialIsOpen={false} />
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <div className={`min-h-screen flex ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-black'}`}>
+      <aside className="w-64 bg-gray-800 text-white p-4">
+        <h2 className="text-xl font-bold mb-4">Navigation</h2>
+        <ul>
+          <li className="mb-2"><a href="#" className="hover:underline">Dashboard</a></li>
+          <li className="mb-2"><a href="#" className="hover:underline">Settings</a></li>
+          <li className="mb-2"><a href="#" className="hover:underline">Profile</a></li>
+        </ul>
+        <button onClick={toggleTheme} className="mt-4 p-2 bg-blue-500 rounded">Toggle {darkMode ? 'Light' : 'Dark'} Mode</button>
+      </aside>
+      <main className="flex-1 p-8">
+        <QueryClientProvider client={queryClient}>
+          <ErrorBoundary>
+            <FruitAllocatorUI />
+          </ErrorBoundary>
+          <ReactQueryDevtools initialIsOpen={false} />
+          <ToastContainer position="bottom-right" />
+        </QueryClientProvider>
+      </main>
+    </div>
   );
 }
 

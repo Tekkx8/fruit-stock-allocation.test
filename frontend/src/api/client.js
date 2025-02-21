@@ -12,6 +12,11 @@ console.log('API Base URL:', API_BASE_URL);
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  }
 });
 
 // Request interceptor for API calls
@@ -114,19 +119,25 @@ export const allocateStock = async (stockFile, ordersFile) => {
 
 export const getRestrictions = async (customerId = 'default') => {
   try {
-    const response = await api.get(
-      `/get_restrictions?customer_id=${customerId}`
-    );
-    return response.data;
+    const response = await api.get(`/get_restrictions?customer_id=${customerId}`);
+    if (!response.restrictions) {
+      console.warn('No restrictions data in response:', response);
+      return {
+        quality: ["Good Q/S", "Fair M/C"],
+        origin: ["Chile"],
+        variety: ["LEGACY"],
+        ggn: null,
+        supplier: []
+      };
+    }
+    return response.restrictions;
   } catch (error) {
-    const handleError = (error) => {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.message ||
-        'Error fetching restrictions';
-      throw new Error(errorMessage);
-    };
-    throw handleError(error);
+    console.error('Error fetching restrictions:', error);
+    const errorMessage =
+      error.response?.data?.error ||
+      error.message ||
+      'Error fetching restrictions';
+    throw new Error(errorMessage);
   }
 };
 
