@@ -8,17 +8,22 @@ function App() {
   const [error, setError] = useState(null);
 
   const fetchRestrictions = useQuery('restrictions', () => 
-    fetch('https://fruit-stock-allocation.onrender.com/get_restrictions?customer_id=default').then(res => res.json())
+    fetch('https://fruit-stock-allocation.onrender.com/get_restrictions?customer_id=default')
+      .then((res) => res.json())
   );
 
-  const allocateMutation = useMutation(data => 
-    fetch('https://fruit-stock-allocation.onrender.com/allocate_stock', {
-      method: 'POST',
-      body: data,
-    }).then(res => res.json()), {
+  const allocateMutation = useMutation(
+    (data) => 
+      fetch('https://fruit-stock-allocation.onrender.com/allocate_stock', {
+        method: 'POST',
+        body: data,
+      })
+        .then((res) => res.json()),
+    {
       onSuccess: (data) => setAllocation(data.allocation),
       onError: (err) => setError(err.message),
-    });
+    }
+  );
 
   const handleAllocate = (allocationData) => {
     const formData = new FormData();
@@ -31,8 +36,11 @@ function App() {
   return (
     <div className="App">
       {error && <div className="error">Error: {error}</div>}
-      {fetchRestrictions.isLoading ? <div>Loading restrictions...</div> : 
-        <FruitAllocatorUI onAllocate={handleAllocate} allocation={allocation} />}
+      {fetchRestrictions.isLoading ? (
+        <div>Loading restrictions...</div>
+      ) : (
+        <FruitAllocatorUI onAllocate={handleAllocate} allocation={allocation} />
+      )}
     </div>
   );
 }
