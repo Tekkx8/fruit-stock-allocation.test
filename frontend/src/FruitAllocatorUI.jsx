@@ -10,23 +10,26 @@ function FruitAllocatorUI({ onAllocate, allocation }) {
     origin: ['Chile'],
     variety: ['LEGACY'],
     ggn: '4063061591012',
-    supplier: ['HORTIFRUT CHILE S.A.']
+    supplier: ['HORTIFRUT CHILE S.A.'],
   });
 
-  const onDropStock = (acceptedFiles) => {
-    setStockFile(acceptedFiles[0]);
-  };
+  const { getRootProps: getStockProps, getInputProps: getStockInputProps } =
+    useDropzone({
+      onDrop: (acceptedFiles) => setStockFile(acceptedFiles[0]),
+    });
 
-  const onDropOrders = (acceptedFiles) => {
-    setOrdersFile(acceptedFiles[0]);
-  };
+  const { getRootProps: getOrdersProps, getInputProps: getOrdersInputProps } =
+    useDropzone({
+      onDrop: (acceptedFiles) => setOrdersFile(acceptedFiles[0]),
+    });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!stockFile || !ordersFile) {
-      alert("Please upload both stock and orders files.");
+      alert('Please upload both stock and orders files.');
       return;
     }
+
     const formData = new FormData();
     formData.append('stock_file', stockFile);
     formData.append('orders_file', ordersFile);
@@ -35,17 +38,22 @@ function FruitAllocatorUI({ onAllocate, allocation }) {
       method: 'POST',
       body: formData,
     });
+
     const data = await response.json();
     onAllocate(data.allocation);
   };
 
   const updateRestriction = (field, value) => {
-    setRestrictions(prev => ({ ...prev, [field]: value }));
-    // Send to backend via /set_restrictions (simplified)
+    const updatedRestrictions = { ...restrictions, [field]: value };
+    setRestrictions(updatedRestrictions);
+
     fetch('http://localhost:5000/set_restrictions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_id: 'default', restrictions: { ...restrictions, [field]: value } }),
+      body: JSON.stringify({
+        customer_id: 'default',
+        restrictions: updatedRestrictions,
+      }),
     });
   };
 
@@ -53,34 +61,48 @@ function FruitAllocatorUI({ onAllocate, allocation }) {
     <div className="fruit-allocator" aria-label="Fruit Stock Allocator">
       <form onSubmit={handleSubmit}>
         <h2>Fruit Stock Allocation</h2>
+
         <div>
           <h3>Upload Files</h3>
-          <div {...useDropzone({ onDrop: onDropStock })}>
-            {stockFile ? stockFile.name : 'Drag and drop stock Excel file or click to select'}
+          <div {...getStockProps()} className="dropzone">
+            <input {...getStockInputProps()} />
+            {stockFile
+              ? stockFile.name
+              : 'Drag and drop stock Excel file or click to select'}
           </div>
-          <div {...useDropzone({ onDrop: onDropOrders })}>
-            {ordersFile ? ordersFile.name : 'Drag and drop orders Excel file or click to select'}
+          <div {...getOrdersProps()} className="dropzone">
+            <input {...getOrdersInputProps()} />
+            {ordersFile
+              ? ordersFile.name
+              : 'Drag and drop orders Excel file or click to select'}
           </div>
         </div>
+
         <h3>Restrictions</h3>
         <div>
           <label>Quality:</label>
-          <select value={restrictions.quality.join(',')} onChange={(e) => updateRestriction('quality', e.target.value.split(','))}>
+          <select
+            value={restrictions.quality.join(',')}
+            onChange={(e) =>
+              updateRestriction('quality', e.target.value.split(','))
+            }
+          >
             <option value="Good Q/S,Fair M/C">Good Q/S, Fair M/C</option>
             <option value="Poor M/C">Poor M/C</option>
           </select>
-          {/* Similar selects for origin, variety, GGN, supplier */}
         </div>
+
         <button type="submit">Allocate</button>
       </form>
+
       {allocation && (
         <div className="allocation-result" aria-live="polite">
           <h3>Allocation Results:</h3>
           {Object.entries(allocation).map(([customer, data]) => (
             <div key={customer}>
-              {customer}: {data.status === 'fully_allocated' && '✅'} 
-              {data.status === 'partially_allocated' && '⚠️'} 
-              {data.status === 'unfulfilled' && '❌'} 
+              {customer}: {data.status === 'fully_allocated' && '✅'}
+              {data.status === 'partially_allocated' && '⚠️'}
+              {data.status === 'unfulfilled' && '❌'}
               Weight: {data.weight} KG, Batches: {JSON.stringify(data.batches)}
             </div>
           ))}
