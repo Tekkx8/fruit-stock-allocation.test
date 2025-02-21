@@ -9,6 +9,7 @@ function App() {
 
   const fetchRestrictions = useQuery('restrictions', () =>
     fetch('https://fruit-stock-allocation.onrender.com/get_restrictions?customer_id=default')
+      .then((res) => res.json())
   );
 
   const allocateMutation = useMutation(
@@ -16,7 +17,8 @@ function App() {
       fetch('https://fruit-stock-allocation.onrender.com/allocate_stock', {
         method: 'POST',
         body: data,
-      }),
+      })
+        .then((res) => res.json()),
     {
       onSuccess: (data) => setAllocation(data.allocation),
       onError: (err) => setError(err.message),
