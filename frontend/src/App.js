@@ -1,13 +1,7 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation } from 'react-query';
 import FruitAllocatorUI from './FruitAllocatorUI';
 import './App.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
-
-const queryClient = new QueryClient();
 
 function App() {
   const [allocation, setAllocation] = useState(null);
@@ -42,12 +36,5 @@ function App() {
     </div>
   );
 }
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <QueryClientProvider client={queryClient}>
-    <App />
-  </QueryClientProvider>
-);
 
 export default App;
