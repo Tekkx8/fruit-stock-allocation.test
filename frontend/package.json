@@ -7,7 +7,8 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-dropzone": "14.2.3",
-    "react-query": "3.39.3"
+    "react-query": "3.39.3",
+    "react-toastify": "^11.0.3"
   },
   "devDependencies": {
     "eslint": "^9.20.1",
@@ -16,8 +17,14 @@
     "prettier": "^3.5.1",
     "react-scripts": "5.0.1"
   },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "set PORT=3001 && react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test"
   },

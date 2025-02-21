@@ -1,7 +1,8 @@
 .App {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+  text-align: center;
+  padding: 2rem;
+  min-height: 100vh;
+  background-color: #f8f9fa;
 }
 
 h1 {
@@ -86,4 +87,67 @@ pre {
   border-radius: 4px;
   overflow-x: auto;
   white-space: pre-wrap;
+}
+
+.error-boundary {
+  margin: 2rem auto;
+  padding: 2rem;
+  max-width: 600px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.error-boundary h2 {
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.error-boundary p {
+  color: #6c757d;
+  margin-bottom: 1.5rem;
+}
+
+.error-boundary button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.error-boundary button:hover {
+  background-color: #0056b3;
+}
+
+/* Toast customization */
+.Toastify__toast {
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.Toastify__toast--error {
+  background-color: #fff;
+  color: #dc3545;
+  border-left: 4px solid #dc3545;
+}
+
+.Toastify__toast--success {
+  background-color: #fff;
+  color: #28a745;
+  border-left: 4px solid #28a745;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .App {
+    padding: 1rem;
+  }
+  
+  .error-boundary {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
 }
